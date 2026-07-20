@@ -1,0 +1,683 @@
+{
+  "name": "Radar de Vagas Tech - Isis (MVP: Busca + IA + Notion)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b188c52e-4513-4fad-812f-6f6dbce78395",
+      "name": "Agendamento (8h todo dia)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        2992,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENTE 1 - Perfil Profissional\n// Fixo por enquanto (gerado a partir do currículo real da Isis).\n// Quando quiser automatizar a leitura do currículo/portfólio, troque este node\n// por um fluxo que lê o PDF/Google Doc e faz o parsing via IA.\n\n// AGENTE 1 - Perfil Profissional (detalhado, a partir do currículo real)\nconst perfil = {\n  nome: \"Isis B. Alencastro\",\n  localizacao_atual: \"Porto Alegre, RS, Brasil\",\n  contato: {\n    email: \"alencastroisis@gmail.com\",\n    linkedin: \"linkedin.com/in/isisalencastro\"\n  },\n  resumo_profissional: \"Estudante de Ciência da Computação (UniRitter, 2025-2029) com experiência prática em desenvolvimento de software, automação com IA e suporte técnico. Participou do desenvolvimento de uma plataforma SaaS em produção, integrando LLMs (GPT-4, Claude) ao WhatsApp Business via N8N e PostgreSQL com busca vetorial semântica. Contribuiu para a digitalização de +200.000 processos no TJRS e para a entrega de +1.000 computadores recondicionados a escolas públicas do RS.\",\n  nivel: \"Estudante de Ciência da Computação (em andamento) / Júnior inicial\",\n  cargos_alvo: [\n    \"Estágio em Desenvolvimento de Software\",\n    \"Desenvolvedora Júnior Full Stack\",\n    \"Desenvolvedora Júnior Back-end\",\n    \"Automação com IA / No-code (N8N)\"\n  ],\n  modelo_trabalho_desejado: {\n    remoto: \"Aceita qualquer país/localização, sem restrição geográfica\",\n    presencial_ou_hibrido: \"Somente Brasil, com preferência por Porto Alegre - RS\"\n  },\n  educacao: [\n    { curso: \"Bacharelado em Ciência da Computação\", instituicao: \"UniRitter\", periodo: \"Fev/2025 - Jan/2029 (em andamento)\" },\n    { curso: \"Ensino Médio Técnico\", instituicao: \"Escola Técnica Estadual Parobé\", periodo: \"Fev/2021 - Dez/2023\" }\n  ],\n  experiencia: [\n    {\n      cargo: \"Desenvolvedora de Software (Freelancer)\",\n      empresa: \"Agência Aria\",\n      periodo: \"Nov/2025 - Mai/2026\",\n      local: \"Porto Alegre, RS\",\n      atividades: [\n        \"Integrações entre APIs externas, LLMs (GPT-4 e Claude) e WhatsApp Business em produção\",\n        \"Arquitetura multi-tenant com controle de acesso por nível e boas práticas de segurança\",\n        \"Automações de processos com N8N conectando banco de dados, IA e canais de comunicação\",\n        \"Backend com PostgreSQL, incluindo busca semântica vetorial para atendimento inteligente\",\n        \"Produto com captura de leads, qualificação via IA e painel de analytics\"\n      ],\n      tecnologias: [\"N8N\", \"PostgreSQL\", \"Supabase\", \"GPT-4\", \"Claude\", \"WhatsApp Business API\"]\n    },\n    {\n      cargo: \"Recepcionista Terceirizada\",\n      empresa: \"Prefeitura Municipal de Porto Alegre\",\n      periodo: \"Dez/2024 - Presente\",\n      local: \"Porto Alegre, RS\",\n      atividades: [\n        \"Triagem de pacientes em unidades de saúde, farmácias distritais e clínicas\",\n        \"Gerenciamento de agendamentos via sistema eletrônico\",\n        \"Padronização de processos internos para redução de tempo de espera\"\n      ]\n    },\n    {\n      cargo: \"Estagiária\",\n      empresa: \"Tribunal de Justiça do RS (TJRS)\",\n      periodo: \"Fev/2024 - Ago/2024\",\n      local: \"Porto Alegre, RS\",\n      atividades: [\"Digitalização e conferência de +200.000 processos físicos\", \"Integridade documental para consulta eletrônica\"]\n    },\n    {\n      cargo: \"Jovem Aprendiz\",\n      empresa: \"PROCERGS\",\n      periodo: \"Jan/2023 - Dez/2023\",\n      local: \"Porto Alegre, RS\",\n      atividades: [\"Montagem e manutenção de computadores (Projeto Sustentare)\", \"Apoio na entrega de +1.000 computadores a escolas públicas do RS\"]\n    }\n  ],\n  stack_tecnica: {\n    linguagens: [\"JavaScript\", \"Python\", \"SQL\", \"HTML\", \"CSS\"],\n    ferramentas: [\"N8N\", \"Supabase\", \"PostgreSQL\", \"Git\", \"GitHub\"],\n    ia_apis: [\"GPT-4 API\", \"Claude API\", \"WhatsApp Business API\", \"Engenharia de Prompt\"]\n  },\n  idiomas: [\n    { idioma: \"Português\", nivel: \"Nativo\" },\n    { idioma: \"Inglês\", nivel: \"Intermediário profissional (leitura fluente)\" }\n  ],\n  projetos_destaque: [\n    { nome: \"Portfólio pessoal\", link: \"https://isisalencastro.site/\" },\n    { nome: \"Gerador de roteiros (content-ia)\", link: \"https://github.com/isisalencastro/content-ia\" },\n    { nome: \"GameTools\", link: \"https://isisalencastro.github.io/gametools/\" },\n    { nome: \"FamilyHub\", link: \"https://github.com/isisalencastro/FamilyHub\" }\n  ]\n};\n\nreturn [{ json: perfil }];\n\n"
+      },
+      "id": "60f49760-b846-441e-b179-47c691ae5a6c",
+      "name": "Perfil Profissional (Agente 1)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3216,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/39d15e550b9d809eb857e213f8dd36ff/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"page_size\": 100\n}",
+        "options": {}
+      },
+      "id": "b13e3d10-e416-4518-b213-90973cc5accf",
+      "name": "Buscar Vagas já salvas no Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3440,
+        208
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "9qYPsgJrXoSoyGZh",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/api",
+        "options": {}
+      },
+      "id": "0c720e8f-480a-4d4c-af8f-1f0b61542e20",
+      "name": "RemoteOK - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3664,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "category",
+              "value": "software-dev"
+            },
+            {
+              "name": "limit",
+              "value": "60"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "204849ac-f55b-4fa2-9261-202a7eb1ef90",
+      "name": "Remotive - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3664,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.arbeitnow.com/api/job-board-api",
+        "options": {}
+      },
+      "id": "78703971-e72d-4ae9-8596-9c8ec89f8954",
+      "name": "Arbeitnow - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3680,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2699b6dc-949a-462c-b8bd-f3b1ce58c294",
+      "name": "Juntar Fontes 1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        3888,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENTE 2 (parte 1) - Normalizar vagas das 3 fontes + remover duplicadas\n// Este node roda 1x recebendo os 3 resultados brutos (RemoteOK, Remotive, Arbeitnow)\n// que chegaram juntos pelos nodes de Merge.\n\nconst rawItems = $input.all();\n\n// IDs já salvos no Notion (para não duplicar)\nlet idsExistentes = [];\ntry {\n  const notionResp = $('Buscar Vagas já salvas no Notion').first().json;\n  idsExistentes = (notionResp.results || []).map(page => {\n    const prop = page.properties && page.properties['ID Externo'];\n    return (prop && prop.rich_text && prop.rich_text[0] && prop.rich_text[0].plain_text) || '';\n  }).filter(Boolean);\n} catch (e) {\n  idsExistentes = [];\n}\n\nconst vagas = [];\n\nfor (const item of rawItems) {\n  const body = item.json;\n\n  // --- RemoteOK: array direto, primeiro item costuma ser aviso legal ---\n  if (Array.isArray(body)) {\n    for (const job of body) {\n      if (!job.id || !job.position) continue;\n      vagas.push({\n        id_externo: 'remoteok_' + job.id,\n        titulo: job.position,\n        empresa: job.company || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: true,\n        link: job.url || ('https://remoteok.com/remote-jobs/' + job.id),\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'RemoteOK'\n      });\n    }\n  }\n\n  // --- Remotive: { jobs: [...] } ---\n  if (body && Array.isArray(body.jobs)) {\n    for (const job of body.jobs) {\n      vagas.push({\n        id_externo: 'remotive_' + job.id,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.candidate_required_location || 'Remoto',\n        remoto: true,\n        link: job.url,\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'Remotive'\n      });\n    }\n  }\n\n  // --- Arbeitnow: { data: [...] } ---\n  if (body && Array.isArray(body.data)) {\n    for (const job of body.data) {\n      vagas.push({\n        id_externo: 'arbeitnow_' + job.slug,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: !!job.remote,\n        link: job.url,\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'Arbeitnow'\n      });\n    }\n  }\n}\n\n// Remove duplicadas dentro da própria execução e vagas já salvas no Notion\nconst vistas = new Set();\nconst novas = vagas.filter(v => {\n  if (idsExistentes.includes(v.id_externo)) return false;\n  if (vistas.has(v.id_externo)) return false;\n  vistas.add(v.id_externo);\n  return true;\n});\n\nreturn novas.map(v => ({ json: v }));"
+      },
+      "id": "c84c1d2d-270b-431f-bdaf-97a24112e2e8",
+      "name": "Normalizar + Remover Duplicadas (Agente 2)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ /junior|júnior|jr\\.|estagio|estágio|trainee|entry.level|intern|graduate|assistant/i.test($json.titulo + ' ' + $json.descricao) && !/senior|sr\\.|staff|principal|lead|specialist|manager/i.test($json.titulo) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "98684a5e-bda4-44df-84b5-ba2e82571a71"
+            },
+            {
+              "id": "1d62205b-48bc-4567-9ca3-75340528240f",
+              "leftValue": "={{ $json.remoto === true || /brasil|brazil|porto alegre|\\bpoa\\b/i.test($json.local) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e928ea56-ab90-44a1-9e2d-cc47bfc0300e",
+      "name": "Filtrar Relevantes (Júnior/Estágio)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        4784,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ceb30592-e488-4a97-ba22-cc4c0e09b64c",
+      "name": "Processar Uma Vaga por Vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        5008,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  max_tokens: 800,\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: \"Você avalia compatibilidade entre um perfil profissional e uma vaga de emprego. Responda SOMENTE com um JSON válido (sem markdown, sem texto fora do JSON), com os campos: compatibilidade (numero 0-100), pontos_fortes (array de strings curtas), gaps (array de strings curtas), vale_a_pena (boolean), resumo_empresa (string, 1-2 frases), senioridade_da_vaga (uma de: Estagio, Junior, Pleno, Senior, Nao especificado), tecnologias_encontradas (array com as tecnologias do perfil que aparecem na vaga).\"\n    },\n    {\n      role: \"user\",\n      content: \"PERFIL PROFISSIONAL:\\n\" + JSON.stringify($('Perfil Profissional (Agente 1)').first().json) + \"\\n\\nVAGA:\\nTitulo: \" + $json.titulo + \"\\nEmpresa: \" + $json.empresa + \"\\nLocal: \" + $json.local + \"\\nDescricao: \" + $json.descricao\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "507c7fe5-5cd4-455a-b703-c2adbcf6a3d0",
+      "name": "GPT - Avaliar Compatibilidade (Agente 3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5232,
+        -16
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FfM452GBoXW0VRw6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai o JSON retornado pela OpenAI (vem dentro de choices[0].message.content)\nconst resp = $input.first().json;\nlet texto = '';\ntry {\n  texto = resp.choices[0].message.content;\n} catch (e) {\n  texto = '{}';\n}\n\n// Remove possíveis cercas de markdown, por segurança (response_format json_object já evita isso, mas não custa manter)\ntexto = texto.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet avaliacao;\ntry {\n  avaliacao = JSON.parse(texto);\n} catch (e) {\n  avaliacao = {\n    compatibilidade: 0,\n    pontos_fortes: [],\n    gaps: ['Erro ao interpretar resposta da IA'],\n    vale_a_pena: false,\n    resumo_empresa: '',\n    senioridade_da_vaga: 'Nao especificado',\n    tecnologias_encontradas: []\n  };\n}\n\nconst vaga = $('Processar Uma Vaga por Vez').item.json;\n\nreturn [{\n  json: {\n    ...vaga,\n    ...avaliacao\n  }\n}];"
+      },
+      "id": "1e4a8e9f-4d17-4774-ba17-4c8108cb134c",
+      "name": "Parse Resposta IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5456,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  parent: { database_id: \"39d15e550b9d809eb857e213f8dd36ff\" },\n  properties: {\n    \"Vaga\": { title: [{ text: { content: $json.titulo } }] },\n    \"Empresa\": { rich_text: [{ text: { content: $json.empresa } }] },\n    \"Link da vaga\": { url: $json.link },\n    \"Fonte\": { select: { name: $json.fonte } },\n    \"ID Externo\": { rich_text: [{ text: { content: $json.id_externo } }] },\n    \"Local\": { rich_text: [{ text: { content: $json.local } }] },\n    \"Remoto\": { checkbox: $json.remoto },\n    \"Senioridade\": { select: { name: $json.senioridade_da_vaga || 'Nao especificado' } },\n    \"Compatibilidade\": { number: $json.compatibilidade },\n    \"Tecnologias encontradas\": { multi_select: (($json.tecnologias_encontradas)||[]).map(t => ({ name: t })) },\n    \"Pontos fortes\": { rich_text: [{ text: { content: (($json.pontos_fortes)||[]).join('; ').slice(0,1900) } }] },\n    \"Gaps\": { rich_text: [{ text: { content: (($json.gaps)||[]).join('; ').slice(0,1900) } }] },\n    \"Resumo empresa\": { rich_text: [{ text: { content: ($json.resumo_empresa || '').slice(0,1900) } }] },\n    \"Data encontrada\": { date: { start: $now.toISODate() } },\n    \"Status\": { select: { name: 'Novo' } }\n  }\n}) }}",
+        "options": {}
+      },
+      "id": "fad8d06d-3acc-4001-9030-1d97ff3779d1",
+      "name": "Criar Página no Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5904,
+        64
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "9qYPsgJrXoSoyGZh",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "88888dea-bdf3-4fee-b502-c62478649c28",
+      "name": "Descartar (abaixo do score)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5904,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.compatibilidade }}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "id": "d777fa42-6d76-462c-91f3-3af46457c838"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "92bf34d9-efd6-4359-bbe4-f61973c087a2",
+      "name": "Compatibilidade >= 75?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5680,
+        -16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fefefb36-d23b-4aad-b905-4a1779c53c13",
+      "name": "Juntar Fontes ",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        4128,
+        224
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "aabdaf4a-8edb-4f85-af4a-0e1fc3487b4a",
+      "name": "Juntar Fontes 3",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        3888,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "hKByXkMQaC5Qt9UMN",
+          "mode": "list",
+          "cachedResultName": "Linkedin Jobs Scraper (curious_coder/linkedin-jobs-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/hKByXkMQaC5Qt9UMN/input"
+        },
+        "customBody": "{\n  \"queries\": [\n    \"estágio desenvolvimento remoto Brasil\",\n    \"estágio desenvolvedor remoto\",\n    \"estágio programação remoto\",\n    \"estágio TI remoto\",\n    \"estágio engenharia de software remoto\",\n    \"estágio front-end remoto\",\n    \"estágio back-end remoto\",\n    \"estágio full stack remoto\"\n  ],\n  \"maxPagesPerQuery\": 2\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        3664,
+        656
+      ],
+      "id": "662796a0-9502-4a90-8e96-cbdf70e2e5ae",
+      "name": "Linkedin Scraper - Busca Vagas",
+      "credentials": {
+        "apifyApi": {
+          "id": "J5msdOs2NaTjhYrr",
+          "name": "Apify account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "MXLpngmVpE8WTESQr",
+          "mode": "list",
+          "cachedResultName": "🚀 Indeed jobs scraper [PPR] (borderline/indeed-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/MXLpngmVpE8WTESQr/input"
+        },
+        "customBody": "{\n  \"queries\": [\n    \"estágio desenvolvimento remoto Brasil\",\n    \"estágio desenvolvedor remoto\",\n    \"estágio programação remoto\",\n    \"estágio TI remoto\",\n    \"estágio engenharia de software remoto\",\n    \"estágio front-end remoto\",\n    \"estágio back-end remoto\",\n    \"estágio full stack remoto\"\n  ],\n  \"maxPagesPerQuery\": 2\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        3664,
+        448
+      ],
+      "id": "54de359b-4aae-482a-9ee4-6dec5d3fd82e",
+      "name": "Indeed Scraper - Busca Vagas",
+      "credentials": {
+        "apifyApi": {
+          "id": "J5msdOs2NaTjhYrr",
+          "name": "Apify account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b98e8e75-33c2-414f-bb97-60905c9e98da",
+      "name": "Juntar Fontes 4",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        3952,
+        656
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Agendamento (8h todo dia)": {
+      "main": [
+        [
+          {
+            "node": "Perfil Profissional (Agente 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perfil Profissional (Agente 1)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Vagas já salvas no Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Vagas já salvas no Notion": {
+      "main": [
+        [
+          {
+            "node": "RemoteOK - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Arbeitnow - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Indeed Scraper - Busca Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Linkedin Scraper - Busca Vagas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotive - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 1": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Arbeitnow - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar + Remover Duplicadas (Agente 2)": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Relevantes (Júnior/Estágio)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Relevantes (Júnior/Estágio)": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Uma Vaga por Vez": {
+      "main": [
+        [],
+        [
+          {
+            "node": "GPT - Avaliar Compatibilidade (Agente 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT - Avaliar Compatibilidade (Agente 3)": {
+      "main": [
+        [
+          {
+            "node": "Parse Resposta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Resposta IA": {
+      "main": [
+        [
+          {
+            "node": "Compatibilidade >= 75?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Página no Notion": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descartar (abaixo do score)": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compatibilidade >= 75?": {
+      "main": [
+        [
+          {
+            "node": "Criar Página no Notion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Descartar (abaixo do score)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes ": {
+      "main": [
+        [
+          {
+            "node": "Normalizar + Remover Duplicadas (Agente 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 3": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes ",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Indeed Scraper - Busca Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Linkedin Scraper - Busca Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 4",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 4": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f80d8913-6594-4ff4-9476-66db369cc6b5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ed02b655b0a269884492232e0d8d9d8e3bb0ac1c5e77b75cb8925644dc06d9d"
+  },
+  "nodeGroups": [],
+  "id": "EbTQybJIKjUUCsjQ",
+  "tags": []
+}
