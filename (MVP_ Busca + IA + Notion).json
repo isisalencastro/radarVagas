@@ -137,7 +137,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// AGENTE 2 (parte 1) - Normalizar vagas das 3 fontes + remover duplicadas\n// Este node roda 1x recebendo os 3 resultados brutos (RemoteOK, Remotive, Arbeitnow)\n// que chegaram juntos pelos nodes de Merge.\n\nconst rawItems = $input.all();\n\n// IDs já salvos no Notion (para não duplicar)\nlet idsExistentes = [];\ntry {\n  const notionResp = $('Buscar Vagas já salvas no Notion').first().json;\n  idsExistentes = (notionResp.results || []).map(page => {\n    const prop = page.properties && page.properties['ID Externo'];\n    return (prop && prop.rich_text && prop.rich_text[0] && prop.rich_text[0].plain_text) || '';\n  }).filter(Boolean);\n} catch (e) {\n  idsExistentes = [];\n}\n\nconst vagas = [];\n\nfor (const item of rawItems) {\n  const body = item.json;\n\n  // --- RemoteOK: array direto, primeiro item costuma ser aviso legal ---\n  if (Array.isArray(body)) {\n    for (const job of body) {\n      if (!job.id || !job.position) continue;\n      vagas.push({\n        id_externo: 'remoteok_' + job.id,\n        titulo: job.position,\n        empresa: job.company || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: true,\n        link: job.url || ('https://remoteok.com/remote-jobs/' + job.id),\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'RemoteOK'\n      });\n    }\n  }\n\n  // --- Remotive: { jobs: [...] } ---\n  if (body && Array.isArray(body.jobs)) {\n    for (const job of body.jobs) {\n      vagas.push({\n        id_externo: 'remotive_' + job.id,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.candidate_required_location || 'Remoto',\n        remoto: true,\n        link: job.url,\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'Remotive'\n      });\n    }\n  }\n\n  // --- Arbeitnow: { data: [...] } ---\n  if (body && Array.isArray(body.data)) {\n    for (const job of body.data) {\n      vagas.push({\n        id_externo: 'arbeitnow_' + job.slug,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: !!job.remote,\n        link: job.url,\n        descricao: String(job.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n        tags: job.tags || [],\n        fonte: 'Arbeitnow'\n      });\n    }\n  }\n}\n\n// Remove duplicadas dentro da própria execução e vagas já salvas no Notion\nconst vistas = new Set();\nconst novas = vagas.filter(v => {\n  if (idsExistentes.includes(v.id_externo)) return false;\n  if (vistas.has(v.id_externo)) return false;\n  vistas.add(v.id_externo);\n  return true;\n});\n\nreturn novas.map(v => ({ json: v }));"
+        "jsCode": "// AGENTE 2 - Normalização, deduplicação, pré-filtros, score heurístico e métricas\n// Responsabilidades deste node: converter fontes diferentes para um contrato único,\n// deduplicar por múltiplas chaves, calcular score barato antes da IA e registrar\n// todo descarte com motivo. Ajuste CONFIG para calibrar volume/custo sem alterar o fluxo.\n\nconst CONFIG = {\n  limiteScoreIA: Number($env.RADAR_VAGAS_SCORE_MINIMO_IA || 45),\n  maxDescricao: 5000,\n  tecnologiasPerfil: ['javascript', 'python', 'sql', 'postgresql', 'supabase', 'n8n', 'git', 'github', 'openai', 'claude', 'react', 'node'],\n  localidadesBrasil: ['brasil', 'brazil', 'porto alegre', 'poa', 'rio grande do sul', 'rs', 'são paulo', 'sao paulo', 'rio de janeiro', 'florianópolis', 'florianopolis', 'curitiba', 'belo horizonte'],\n  termosObrigatorios: ['intern', 'estágio', 'estagio', 'junior', 'júnior', 'jr', 'entry level', 'graduate', 'trainee', 'developer', 'engineer', 'desenvolvedor', 'desenvolvedora', 'programador'],\n  areasExcluidas: ['devops', 'data engineer', 'engenheiro de dados', 'qa senior', 'quality assurance senior', 'architect', 'arquiteto', 'principal', 'lead', 'staff', 'manager', 'gerente']\n};\n\nconst stripHtml = (value) => String(value || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\nconst lower = (value) => stripHtml(value).toLowerCase();\nconst compact = (value) => lower(value).replace(/[^a-z0-9]+/g, ' ').trim();\nconst hash = (value) => {\n  let h = 2166136261;\n  const text = compact(value).slice(0, 2000);\n  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24); }\n  return (h >>> 0).toString(16);\n};\nconst asArray = (v) => Array.isArray(v) ? v : (v ? [v] : []);\nconst unique = (arr) => [...new Set(arr.filter(Boolean).map(String))];\nconst hasAny = (text, terms) => terms.some(t => new RegExp(`(^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}([^a-z0-9]|$)`, 'i').test(text));\n\nlet idsExistentes = [];\ntry {\n  const notionResp = $('Buscar Vagas já salvas no Notion').first().json;\n  idsExistentes = (notionResp.results || []).map(page => page.properties?.['ID Externo']?.rich_text?.[0]?.plain_text || '').filter(Boolean);\n} catch (e) { idsExistentes = []; }\nconst idsSalvos = new Set(idsExistentes);\n\nfunction detectRemote(job, localText) {\n  return Boolean(job.remote || job.is_remote || job.workplaceType === 'remote' || /remote|remoto|anywhere|worldwide/i.test(localText));\n}\nfunction detectSeniority(text) {\n  if (/\\b(intern|internship|estágio|estagio|trainee)\\b/i.test(text)) return 'Estagio';\n  if (/\\b(junior|júnior|jr\\.?|entry level|graduate)\\b/i.test(text)) return 'Junior';\n  if (/\\b(senior|sr\\.?)\\b/i.test(text)) return 'Senior';\n  if (/\\b(staff|principal|lead|manager|architect)\\b/i.test(text)) return 'Incompativel';\n  return 'Nao especificado';\n}\nfunction detectTech(text, tags = []) {\n  const bag = `${text} ${asArray(tags).join(' ')}`;\n  const aliases = { javascript:['javascript','js'], python:['python'], sql:['sql'], postgresql:['postgres','postgresql'], supabase:['supabase'], n8n:['n8n'], git:['git'], github:['github'], openai:['openai','gpt'], claude:['claude'], react:['react'], node:['node','node.js','nodejs'] };\n  return Object.entries(aliases).filter(([, names]) => hasAny(bag, names)).map(([tech]) => tech);\n}\nfunction normalize(job, source) {\n  const titulo = job.position || job.title || job.jobTitle || job.name || 'Título não informado';\n  const empresa = job.company || job.company_name || job.companyName || job.organization || 'Não informado';\n  const local = job.location || job.candidate_required_location || job.jobLocation || job.city || 'Não informado';\n  const descricao = stripHtml(job.description || job.jobDescription || job.summary || job.text).slice(0, CONFIG.maxDescricao);\n  const url = job.url || job.applyUrl || job.link || job.jobUrl || job.linkedinUrl || '';\n  const tags = asArray(job.tags || job.keywords || job.skills);\n  const text = `${titulo} ${empresa} ${local} ${descricao} ${tags.join(' ')}`;\n  const idRaw = job.id || job.slug || job.jobId || job.externalId || url || `${empresa}-${titulo}-${hash(descricao)}`;\n  const tecnologias = detectTech(text, tags);\n  return {\n    id: `${source.toLowerCase()}_${idRaw}`,\n    id_externo: `${source.toLowerCase()}_${idRaw}`,\n    titulo, empresa, descricao, url, link: url, fonte: source, local,\n    remoto: detectRemote(job, local),\n    senioridade: detectSeniority(text),\n    tecnologias,\n    tags: unique([...tags, ...tecnologias]),\n    salario: job.salary || job.salaryText || job.compensation || null,\n    tipo_contrato: job.jobType || job.contractType || job.employmentType || null,\n    idioma: /\\benglish|required english|ingl[eê]s\\b/i.test(text) ? 'Inglês' : (/\\bportugu[eê]s|portuguese\\b/i.test(text) ? 'Português' : 'Não especificado'),\n    data_publicacao: job.date || job.publication_date || job.published_at || job.created_at || job.postedAt || null,\n    hash_descricao: hash(descricao)\n  };\n}\nfunction score(v) {\n  const text = lower(`${v.titulo} ${v.descricao} ${v.local} ${v.tecnologias.join(' ')}`);\n  let pontos = 0, motivos = [];\n  const add = (n,m) => { pontos += n; motivos.push(`${n > 0 ? '+' : ''}${n} ${m}`); };\n  if (/estágio|estagio/.test(text)) add(25, 'estágio');\n  if (/junior|júnior|jr\\.?|entry level/.test(text)) add(20, 'júnior/entry level');\n  if (/intern|internship/.test(text)) add(15, 'intern');\n  if (v.remoto) add(10, 'remoto');\n  if (/brasil|brazil/.test(text)) add(10, 'Brasil');\n  if (/porto alegre|\\bpoa\\b/.test(text)) add(10, 'Porto Alegre');\n  for (const tech of ['javascript','python','react','node','postgresql','n8n','openai']) if (v.tecnologias.includes(tech)) add(10, tech);\n  for (const [term, penalty] of [['senior',-40],['staff',-50],['principal',-50],['lead',-50],['manager',-80]]) if (hasAny(text, [term])) add(penalty, term);\n  return { pontos, motivos };\n}\nfunction discardReasons(v, pontos) {\n  const text = lower(`${v.titulo} ${v.descricao} ${v.local}`);\n  const reasons = [];\n  if (hasAny(text, CONFIG.areasExcluidas)) reasons.push('Área/senioridade incompatível');\n  if (!v.remoto && !hasAny(lower(v.local), CONFIG.localidadesBrasil)) reasons.push('Localização incompatível');\n  if (!hasAny(text, CONFIG.termosObrigatorios) && v.tecnologias.length === 0) reasons.push('Tecnologia/área incompatível');\n  if (pontos < CONFIG.limiteScoreIA) reasons.push(`Score heurístico muito baixo (${pontos} < ${CONFIG.limiteScoreIA})`);\n  return unique(reasons);\n}\n\nconst rawItems = $input.all();\nconst vagas = [];\nfor (const item of rawItems) {\n  const body = item.json;\n  if (Array.isArray(body)) for (const job of body) if (job && (job.id || job.position || job.title)) vagas.push(normalize(job, 'RemoteOK'));\n  if (body?.jobs) for (const job of body.jobs) vagas.push(normalize(job, 'Remotive'));\n  if (body?.data) for (const job of body.data) vagas.push(normalize(job, 'Arbeitnow'));\n  if (body?.items) for (const job of body.items) vagas.push(normalize(job, item.json.source || 'Apify'));\n  if (body?.title || body?.jobTitle) vagas.push(normalize(body, body.source || body.fonte || 'Apify'));\n}\n\nconst seen = new Set();\nconst output = [];\nfor (const v of vagas) {\n  const keys = [v.id_externo, v.url, `${compact(v.empresa)}|${compact(v.titulo)}`, v.hash_descricao].filter(Boolean);\n  const duplicada = keys.some(k => seen.has(k) || idsSalvos.has(k));\n  keys.forEach(k => seen.add(k));\n  const { pontos, motivos } = score(v);\n  const reasons = duplicada ? ['Duplicada'] : discardReasons(v, pontos);\n  output.push({ json: { ...v, score_heuristico: pontos, motivo_score: motivos.join('; '), status_pipeline: reasons.length ? 'Descartada antes da IA' : 'Elegível para IA', motivo_descarte: reasons.join('; '), enviar_para_ia: reasons.length === 0, metricas: { limite_score_ia: CONFIG.limiteScoreIA } } });\n}\nconsole.log(`RadarVagas: ${vagas.length} normalizadas, ${output.filter(i=>i.json.enviar_para_ia).length} enviadas para IA, ${output.filter(i=>!i.json.enviar_para_ia).length} descartadas antes da IA.`);\nreturn output;"
       },
       "id": "c84c1d2d-270b-431f-bdaf-97a24112e2e8",
       "name": "Normalizar + Remover Duplicadas (Agente 2)",
@@ -159,24 +159,14 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ /junior|júnior|jr\\.|estagio|estágio|trainee|entry.level|intern|graduate|assistant/i.test($json.titulo + ' ' + $json.descricao) && !/senior|sr\\.|staff|principal|lead|specialist|manager/i.test($json.titulo) }}",
-              "rightValue": "true",
+              "leftValue": "={{ $json.enviar_para_ia }}",
+              "rightValue": true,
               "operator": {
                 "type": "boolean",
                 "operation": "true",
                 "singleValue": true
               },
-              "id": "98684a5e-bda4-44df-84b5-ba2e82571a71"
-            },
-            {
-              "id": "1d62205b-48bc-4567-9ca3-75340528240f",
-              "leftValue": "={{ $json.remoto === true || /brasil|brazil|porto alegre|\\bpoa\\b/i.test($json.local) }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
+              "id": "score-gate"
             }
           ],
           "combinator": "and"
@@ -184,8 +174,8 @@
         "options": {}
       },
       "id": "e928ea56-ab90-44a1-9e2d-cc47bfc0300e",
-      "name": "Filtrar Relevantes (Júnior/Estágio)",
-      "type": "n8n-nodes-base.filter",
+      "name": "Score >= limite para IA?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
         4784,
@@ -219,7 +209,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  max_tokens: 800,\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: \"Você avalia compatibilidade entre um perfil profissional e uma vaga de emprego. Responda SOMENTE com um JSON válido (sem markdown, sem texto fora do JSON), com os campos: compatibilidade (numero 0-100), pontos_fortes (array de strings curtas), gaps (array de strings curtas), vale_a_pena (boolean), resumo_empresa (string, 1-2 frases), senioridade_da_vaga (uma de: Estagio, Junior, Pleno, Senior, Nao especificado), tecnologias_encontradas (array com as tecnologias do perfil que aparecem na vaga).\"\n    },\n    {\n      role: \"user\",\n      content: \"PERFIL PROFISSIONAL:\\n\" + JSON.stringify($('Perfil Profissional (Agente 1)').first().json) + \"\\n\\nVAGA:\\nTitulo: \" + $json.titulo + \"\\nEmpresa: \" + $json.empresa + \"\\nLocal: \" + $json.local + \"\\nDescricao: \" + $json.descricao\n    }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  max_tokens: 1100,\n  temperature: 0.1,\n  response_format: { type: \"json_object\" },\n  messages: [\n    { role: \"system\", content: \"Você é um avaliador rigoroso de vagas tech para uma estudante de Ciência da Computação em início de carreira. Responda SOMENTE JSON válido, sem markdown. Campos obrigatórios: compatibilidade (0-100), vale_a_pena (boolean), prioridade (Baixa|Média|Alta), chance_entrevista (0-100), motivo_score (string), gaps (array), tecnologias_encontradas (array), tecnologias_faltantes (array), senioridade_detectada (Estagio|Junior|Pleno|Senior|Incompativel|Nao especificado), empresa_resumo (string), empresa_confiavel (boolean), ghost_job_probabilidade (0-100), ingles_obrigatorio (boolean), anos_experiencia (number|null), curriculo_precisa_personalizacao (boolean), carta_apresentacao_recomendada (boolean). Penalize senior/staff/principal/lead/manager, presencial fora do Brasil e stacks sem JavaScript/Python/SQL/automação/IA.\" },\n    { role: \"user\", content: \"PERFIL PROFISSIONAL:\\n\" + JSON.stringify($('Perfil Profissional (Agente 1)').first().json) + \"\\n\\nVAGA NORMALIZADA:\\n\" + JSON.stringify($json) }\n  ]\n}) }}",
         "options": {}
       },
       "id": "507c7fe5-5cd4-455a-b703-c2adbcf6a3d0",
@@ -239,7 +229,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extrai o JSON retornado pela OpenAI (vem dentro de choices[0].message.content)\nconst resp = $input.first().json;\nlet texto = '';\ntry {\n  texto = resp.choices[0].message.content;\n} catch (e) {\n  texto = '{}';\n}\n\n// Remove possíveis cercas de markdown, por segurança (response_format json_object já evita isso, mas não custa manter)\ntexto = texto.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet avaliacao;\ntry {\n  avaliacao = JSON.parse(texto);\n} catch (e) {\n  avaliacao = {\n    compatibilidade: 0,\n    pontos_fortes: [],\n    gaps: ['Erro ao interpretar resposta da IA'],\n    vale_a_pena: false,\n    resumo_empresa: '',\n    senioridade_da_vaga: 'Nao especificado',\n    tecnologias_encontradas: []\n  };\n}\n\nconst vaga = $('Processar Uma Vaga por Vez').item.json;\n\nreturn [{\n  json: {\n    ...vaga,\n    ...avaliacao\n  }\n}];"
+        "jsCode": "// Extrai o JSON retornado pela OpenAI (vem dentro de choices[0].message.content)\nconst resp = $input.first().json;\nlet texto = '';\ntry {\n  texto = resp.choices[0].message.content;\n} catch (e) {\n  texto = '{}';\n}\n\n// Remove possíveis cercas de markdown, por segurança (response_format json_object já evita isso, mas não custa manter)\ntexto = texto.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet avaliacao;\ntry {\n  avaliacao = JSON.parse(texto);\n} catch (e) {\n  avaliacao = {\n    compatibilidade: 0,\n    vale_a_pena: false, prioridade: 'Baixa', chance_entrevista: 0, motivo_score: 'Erro ao interpretar resposta da IA', gaps: ['Erro ao interpretar resposta da IA'], tecnologias_encontradas: [], tecnologias_faltantes: [], senioridade_detectada: 'Nao especificado', empresa_resumo: '', empresa_confiavel: false, ghost_job_probabilidade: 100, ingles_obrigatorio: false, anos_experiencia: null, curriculo_precisa_personalizacao: true, carta_apresentacao_recomendada: false\n  };\n}\n\nconst vaga = $('Processar Uma Vaga por Vez').item.json;\n\nreturn [{\n  json: {\n    ...vaga,\n    ...avaliacao,\n    score_ia: Number(avaliacao.compatibilidade || 0),\n    status_pipeline: avaliacao.vale_a_pena && Number(avaliacao.compatibilidade || 0) >= 75 ? 'Aprovada pela IA' : 'Descartada pela IA',\n    motivo_descarte: avaliacao.vale_a_pena && Number(avaliacao.compatibilidade || 0) >= 75 ? '' : (avaliacao.motivo_score || 'IA incompatível')\n  }\n}];"
       },
       "id": "1e4a8e9f-4d17-4774-ba17-4c8108cb134c",
       "name": "Parse Resposta IA",
@@ -267,7 +257,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  parent: { database_id: \"39d15e550b9d809eb857e213f8dd36ff\" },\n  properties: {\n    \"Vaga\": { title: [{ text: { content: $json.titulo } }] },\n    \"Empresa\": { rich_text: [{ text: { content: $json.empresa } }] },\n    \"Link da vaga\": { url: $json.link },\n    \"Fonte\": { select: { name: $json.fonte } },\n    \"ID Externo\": { rich_text: [{ text: { content: $json.id_externo } }] },\n    \"Local\": { rich_text: [{ text: { content: $json.local } }] },\n    \"Remoto\": { checkbox: $json.remoto },\n    \"Senioridade\": { select: { name: $json.senioridade_da_vaga || 'Nao especificado' } },\n    \"Compatibilidade\": { number: $json.compatibilidade },\n    \"Tecnologias encontradas\": { multi_select: (($json.tecnologias_encontradas)||[]).map(t => ({ name: t })) },\n    \"Pontos fortes\": { rich_text: [{ text: { content: (($json.pontos_fortes)||[]).join('; ').slice(0,1900) } }] },\n    \"Gaps\": { rich_text: [{ text: { content: (($json.gaps)||[]).join('; ').slice(0,1900) } }] },\n    \"Resumo empresa\": { rich_text: [{ text: { content: ($json.resumo_empresa || '').slice(0,1900) } }] },\n    \"Data encontrada\": { date: { start: $now.toISODate() } },\n    \"Status\": { select: { name: 'Novo' } }\n  }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  parent: { database_id: \"39d15e550b9d809eb857e213f8dd36ff\" },\n  properties: {\n    \"Vaga\": { title: [{ text: { content: $json.titulo || 'Título não informado' } }] },\n    \"Empresa\": { rich_text: [{ text: { content: $json.empresa || 'Não informado' } }] },\n    \"Link da vaga\": { url: $json.url || $json.link || null },\n    \"Fonte\": { select: { name: $json.fonte || 'Não informada' } },\n    \"ID Externo\": { rich_text: [{ text: { content: $json.id_externo || $json.id || '' } }] },\n    \"Local\": { rich_text: [{ text: { content: $json.local || 'Não informado' } }] },\n    \"Remoto\": { checkbox: Boolean($json.remoto) },\n    \"Senioridade\": { select: { name: $json.senioridade_detectada || $json.senioridade || 'Nao especificado' } },\n    \"Compatibilidade\": { number: Number($json.compatibilidade || 0) },\n    \"Score heurístico\": { number: Number($json.score_heuristico || 0) },\n    \"Score IA\": { number: Number($json.score_ia || $json.compatibilidade || 0) },\n    \"Prioridade\": { select: { name: $json.prioridade || 'Baixa' } },\n    \"Tecnologias encontradas\": { multi_select: (($json.tecnologias_encontradas || $json.tecnologias || [])).slice(0, 100).map(t => ({ name: String(t).slice(0, 100) })) },\n    \"Gaps\": { rich_text: [{ text: { content: (($json.gaps)||[]).join('; ').slice(0,1900) } }] },\n    \"Motivo\": { rich_text: [{ text: { content: ($json.motivo_score || '').slice(0,1900) } }] },\n    \"Motivo descarte\": { rich_text: [{ text: { content: ($json.motivo_descarte || '').slice(0,1900) } }] },\n    \"Resumo empresa\": { rich_text: [{ text: { content: ($json.empresa_resumo || $json.resumo_empresa || '').slice(0,1900) } }] },\n    \"Data encontrada\": { date: { start: $now.toISODate() } },\n    \"Status\": { select: { name: $json.status_pipeline === 'Aprovada pela IA' ? 'Novo' : 'Descartado' } }\n  }\n}) }}",
         "options": {}
       },
       "id": "fad8d06d-3acc-4001-9030-1d97ff3779d1",
@@ -360,7 +350,7 @@
           "cachedResultName": "Linkedin Jobs Scraper (curious_coder/linkedin-jobs-scraper)",
           "cachedResultUrl": "https://console.apify.com/actors/hKByXkMQaC5Qt9UMN/input"
         },
-        "customBody": "{\n  \"queries\": [\n    \"estágio desenvolvimento remoto Brasil\",\n    \"estágio desenvolvedor remoto\",\n    \"estágio programação remoto\",\n    \"estágio TI remoto\",\n    \"estágio engenharia de software remoto\",\n    \"estágio front-end remoto\",\n    \"estágio back-end remoto\",\n    \"estágio full stack remoto\"\n  ],\n  \"maxPagesPerQuery\": 2\n}"
+        "customBody": "{\n  \"queries\": [\n    \"Software Engineer Intern\",\n    \"Software Developer Intern\",\n    \"Backend Intern\",\n    \"Front-end Intern\",\n    \"Frontend Intern\",\n    \"Full Stack Intern\",\n    \"Junior Backend Developer\",\n    \"Junior Software Engineer\",\n    \"Entry Level Software Engineer\",\n    \"Graduate Developer\",\n    \"JavaScript Developer Junior\",\n    \"Node.js Developer Junior\",\n    \"React Developer Junior\",\n    \"Python Developer Junior\",\n    \"AI Automation Intern\",\n    \"OpenAI Developer Intern\",\n    \"N8N Automation Intern\",\n    \"Estágio Desenvolvimento\",\n    \"Estágio Programação\",\n    \"Estágio TI\",\n    \"Estágio Engenharia de Software\",\n    \"Estágio Front-end\",\n    \"Estágio Back-end\",\n    \"Estágio Full Stack\",\n    \"Desenvolvedor Júnior\",\n    \"Desenvolvedora Júnior\",\n    \"Desenvolvedor Backend Júnior\",\n    \"Desenvolvedor Front-end Júnior\",\n    \"Desenvolvedor Full Stack Júnior\",\n    \"Programador Júnior\"\n  ],\n  \"maxPagesPerQuery\": 3\n}"
       },
       "type": "@apify/n8n-nodes-apify.apify",
       "typeVersion": 1,
@@ -386,7 +376,7 @@
           "cachedResultName": "🚀 Indeed jobs scraper [PPR] (borderline/indeed-scraper)",
           "cachedResultUrl": "https://console.apify.com/actors/MXLpngmVpE8WTESQr/input"
         },
-        "customBody": "{\n  \"queries\": [\n    \"estágio desenvolvimento remoto Brasil\",\n    \"estágio desenvolvedor remoto\",\n    \"estágio programação remoto\",\n    \"estágio TI remoto\",\n    \"estágio engenharia de software remoto\",\n    \"estágio front-end remoto\",\n    \"estágio back-end remoto\",\n    \"estágio full stack remoto\"\n  ],\n  \"maxPagesPerQuery\": 2\n}"
+        "customBody": "{\n  \"queries\": [\n    \"Software Engineer Intern\",\n    \"Software Developer Intern\",\n    \"Backend Intern\",\n    \"Front-end Intern\",\n    \"Frontend Intern\",\n    \"Full Stack Intern\",\n    \"Junior Backend Developer\",\n    \"Junior Software Engineer\",\n    \"Entry Level Software Engineer\",\n    \"Graduate Developer\",\n    \"JavaScript Developer Junior\",\n    \"Node.js Developer Junior\",\n    \"React Developer Junior\",\n    \"Python Developer Junior\",\n    \"AI Automation Intern\",\n    \"OpenAI Developer Intern\",\n    \"N8N Automation Intern\",\n    \"Estágio Desenvolvimento\",\n    \"Estágio Programação\",\n    \"Estágio TI\",\n    \"Estágio Engenharia de Software\",\n    \"Estágio Front-end\",\n    \"Estágio Back-end\",\n    \"Estágio Full Stack\",\n    \"Desenvolvedor Júnior\",\n    \"Desenvolvedora Júnior\",\n    \"Desenvolvedor Backend Júnior\",\n    \"Desenvolvedor Front-end Júnior\",\n    \"Desenvolvedor Full Stack Júnior\",\n    \"Programador Júnior\"\n  ],\n  \"maxPagesPerQuery\": 3\n}"
       },
       "type": "@apify/n8n-nodes-apify.apify",
       "typeVersion": 1,
@@ -518,18 +508,7 @@
       "main": [
         [
           {
-            "node": "Filtrar Relevantes (Júnior/Estágio)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filtrar Relevantes (Júnior/Estágio)": {
-      "main": [
-        [
-          {
-            "node": "Processar Uma Vaga por Vez",
+            "node": "Score >= limite para IA?",
             "type": "main",
             "index": 0
           }
@@ -603,7 +582,7 @@
         ],
         [
           {
-            "node": "Descartar (abaixo do score)",
+            "node": "Criar Página no Notion",
             "type": "main",
             "index": 0
           }
@@ -661,6 +640,24 @@
             "node": "Juntar Fontes 3",
             "type": "main",
             "index": 1
+          }
+        ]
+      ]
+    },
+    "Score >= limite para IA?": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar Página no Notion",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
