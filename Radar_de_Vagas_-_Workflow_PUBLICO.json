@@ -1,0 +1,737 @@
+{
+  "name": "Radar de Vagas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d43a5b7d-4449-4437-b0d6-4b28789c631a",
+      "name": "Agendamento (8h todo dia)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENTE 1 - Perfil Profissional\n// ⚠️ ESTE É UM PERFIL DE EXEMPLO (fake), para o repositório público.\n// Antes de usar o workflow de verdade, edite os valores abaixo com os SEUS dados.\n// Se você fizer fork deste repo, NÃO faça commit do node com seus dados reais -\n// mantenha sua versão preenchida apenas localmente / numa branch privada.\n//\n// Quando quiser automatizar a leitura do currículo/portfólio, troque este node\n// por um fluxo que lê o PDF/Google Doc e faz o parsing via IA.\n\nconst perfil = {\n  nome: \"Seu Nome Completo\",\n  localizacao_atual: \"Sua Cidade, UF, Brasil\",\n  contato: {\n    email: \"seuemail@exemplo.com\",\n    linkedin: \"linkedin.com/in/seu-usuario\"\n  },\n  resumo_profissional: \"Resumo profissional curto: formação, principais tecnologias, tipo de experiência (estágios, freelas, projetos pessoais) e o que te diferencia.\",\n  nivel: \"Estudante / Júnior inicial\",\n  cargos_alvo: [\n    \"Estágio em Desenvolvimento de Software\",\n    \"Desenvolvedor(a) Júnior Full Stack\",\n    \"Desenvolvedor(a) Júnior Back-end\",\n    \"Automação com IA / No-code (N8N)\"\n  ],\n  modelo_trabalho_desejado: {\n    remoto: \"Aceita qualquer país/localização, sem restrição geográfica\",\n    presencial_ou_hibrido: \"Somente Brasil, com preferência pela sua cidade\"\n  },\n  educacao: [\n    { curso: \"Seu curso\", instituicao: \"Sua instituição\", periodo: \"Período (em andamento)\" }\n  ],\n  experiencia: [\n    {\n      cargo: \"Cargo\",\n      empresa: \"Empresa\",\n      periodo: \"Período\",\n      local: \"Cidade, UF\",\n      atividades: [\n        \"Principal atividade 1\",\n        \"Principal atividade 2\"\n      ],\n      tecnologias: [\"Tecnologia 1\", \"Tecnologia 2\"]\n    }\n  ],\n  stack_tecnica: {\n    linguagens: [\"JavaScript\", \"Python\", \"SQL\", \"HTML\", \"CSS\"],\n    ferramentas: [\"N8N\", \"PostgreSQL\", \"Git\", \"GitHub\"],\n    ia_apis: [\"GPT-4 API\", \"Engenharia de Prompt\"]\n  },\n  idiomas: [\n    { idioma: \"Português\", nivel: \"Nativo\" },\n    { idioma: \"Inglês\", nivel: \"Intermediário\" }\n  ],\n  projetos_destaque: [\n    { nome: \"Seu projeto\", link: \"https://github.com/seu-usuario/seu-projeto\" }\n  ]\n};\n\nreturn [{ json: perfil }];\n"
+      },
+      "id": "172d2dd9-d67e-4b9e-83e2-17960fda2d97",
+      "name": "Perfil Profissional (Agente 1)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIG - Lista central de termos de busca (PT + EN)\n// Edite APENAS este node para adicionar/remover termos de busca.\n// Usado hoje por: Indeed Scraper e Linkedin Scraper (Apify).\n// Pode ser reaproveitado por qualquer fonte nova que precise de busca por palavra-chave\n// (ex.: um futuro node de Greenhouse/Lever por empresa).\n\nconst termos = [\n  // Inglês\n  \"Software Engineer Intern\",\n  \"Software Developer Intern\",\n  \"Backend Intern\",\n  \"Frontend Intern\",\n  \"Full Stack Intern\",\n  \"Junior Software Engineer\",\n  \"Junior Backend Developer\",\n  \"Junior Frontend Developer\",\n  \"Entry Level Software Engineer\",\n  \"Graduate Developer\",\n  \"JavaScript Developer Junior\",\n  \"Node.js Developer Junior\",\n  \"React Developer Junior\",\n  \"Python Developer Junior\",\n  \"AI Automation Intern\",\n  \"OpenAI Developer Intern\",\n  // Português\n  \"Estágio Desenvolvimento\",\n  \"Estágio Programação\",\n  \"Estágio TI\",\n  \"Estágio Engenharia de Software\",\n  \"Desenvolvedor Júnior\",\n  \"Desenvolvedor Backend Júnior\",\n  \"Desenvolvedor Front-end Júnior\",\n  \"Desenvolvedor Full Stack Júnior\"\n];\n\nconsole.log(`[Config] ${termos.length} termos de busca carregados.`);\n\nreturn [{ json: { termos } }];"
+      },
+      "id": "3f980345-c316-433b-9d9d-32c5266e43b5",
+      "name": "Config - Termos de Busca",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/COLOQUE_SEU_DATABASE_ID_AQUI/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"page_size\": 100\n}",
+        "options": {}
+      },
+      "id": "18e6eeb1-1d9b-42c5-8abe-e3c3dc08c5de",
+      "name": "Buscar Vagas já salvas no Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -48,
+        256
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/api",
+        "options": {}
+      },
+      "id": "1b2da6a8-d3fa-434b-9884-d1efe43ea84d",
+      "name": "RemoteOK - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        -128
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "category",
+              "value": "software-dev"
+            },
+            {
+              "name": "limit",
+              "value": "250"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2da6fa89-7b38-4970-b8d2-90351cc0f781",
+      "name": "Remotive - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        64
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.arbeitnow.com/api/job-board-api",
+        "options": {}
+      },
+      "id": "195bbb65-beb4-44b4-a102-4f1625d73fa7",
+      "name": "Arbeitnow - Buscar Vagas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        208
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "MXLpngmVpE8WTESQr",
+          "mode": "list",
+          "cachedResultName": "🚀 Indeed jobs scraper [PPR] (borderline/indeed-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/MXLpngmVpE8WTESQr/input"
+        },
+        "customBody": "={{ JSON.stringify({ queries: $('Config - Termos de Busca').first().json.termos.map(t => t + ' remoto'), maxPagesPerQuery: 1 }) }}",
+        "timeout": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        176,
+        384
+      ],
+      "id": "049b7d2f-65d4-48a7-bd9a-36a0d690a02c",
+      "name": "Indeed Scraper - Busca Vagas",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "hKByXkMQaC5Qt9UMN",
+          "mode": "list",
+          "cachedResultName": "Linkedin Jobs Scraper (curious_coder/linkedin-jobs-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/hKByXkMQaC5Qt9UMN/input"
+        },
+        "customBody": "={{ JSON.stringify({ urls: $('Config - Termos de Busca').first().json.termos.map(t => `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(t)}&location=Brazil`) }) }}",
+        "timeout": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        176,
+        576
+      ],
+      "id": "d200f326-7a3f-4f2b-8c56-2ecb64e0ee6e",
+      "name": "Linkedin Scraper - Busca Vagas",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza a saída do Apify (Indeed) para o formato interno padrão da automação.\n// Os nomes de campo variam conforme a versão do actor - por isso os fallbacks com \"||\".\n// Se o actor mudar de novo, confira 1x a aba \"Output\" da execução no n8n e ajuste aqui.\n\nreturn $input.all().map(item => {\n  const j = item.json;\n  const titulo = j.title || j.positionName || j.jobTitle || '';\n  if (!titulo) return null;\n\n  const empresa = j.company || j.companyName || 'Não informado';\n  const local = j.location || j.jobLocation || 'Não informado';\n  const chaveFallback = (empresa + '_' + titulo).toLowerCase().replace(/\\s+/g, '_');\n\n  return {\n    json: {\n      id_externo: 'indeed_' + (j.id || j.jobKey || chaveFallback),\n      titulo,\n      empresa,\n      local,\n      remoto: /remot[eo]/i.test(String(local)),\n      link: j.url || j.jobUrl || j.link || '',\n      descricao: String(j.description || j.descriptionText || j.snippet || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n      tags: j.tags || [],\n      fonte: 'Indeed'\n    }\n  };\n}).filter(Boolean);"
+      },
+      "id": "1c71e2aa-03a0-4550-bbd1-2ce5af98530a",
+      "name": "Normalizar - Indeed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        384
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza a saída do Apify (Linkedin) para o formato interno padrão da automação.\n// Os nomes de campo variam conforme a versão do actor - por isso os fallbacks com \"||\".\n// Se o actor mudar de novo, confira 1x a aba \"Output\" da execução no n8n e ajuste aqui.\n\nreturn $input.all().map(item => {\n  const j = item.json;\n  const titulo = j.title || j.positionName || j.jobTitle || '';\n  if (!titulo) return null;\n\n  const empresa = j.companyName || j.company || 'Não informado';\n  const local = j.location || j.jobLocation || 'Não informado';\n  const chaveFallback = (empresa + '_' + titulo).toLowerCase().replace(/\\s+/g, '_');\n\n  return {\n    json: {\n      id_externo: 'linkedin_' + (j.id || j.jobId || chaveFallback),\n      titulo,\n      empresa,\n      local,\n      remoto: /remot[eo]/i.test(String(local)),\n      link: j.link || j.url || j.jobUrl || '',\n      descricao: String(j.descriptionText || j.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000),\n      tags: j.tags || [],\n      fonte: 'Linkedin'\n    }\n  };\n}).filter(Boolean);"
+      },
+      "id": "d57315c8-570e-49d5-b22f-b133416790fa",
+      "name": "Normalizar - Linkedin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        576
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {},
+      "id": "452ad034-a5ba-46c9-a658-6e4e9a027c1e",
+      "name": "Juntar Fontes 1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        400,
+        -32
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "92aa897b-a8d1-4944-8b59-23a5ddae9920",
+      "name": "Juntar Fontes 4",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        624,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5807e3b2-4a18-483a-976c-56b1e2221c9a",
+      "name": "Juntar Fontes 3",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        848,
+        432
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "517d6899-7e03-477b-bc43-1aefa664ad73",
+      "name": "Juntar Fontes 2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1072,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENTE 2 - Normalização final (RemoteOK / Remotive / Arbeitnow) + Deduplicação global\n// Indeed e Linkedin já chegam normalizados (ver nodes \"Normalizar - Indeed\" e\n// \"Normalizar - Linkedin\", logo após os scrapers Apify). Aqui só:\n//   1) padronizamos as 3 fontes \"brutas\" (RemoteOK/Remotive/Arbeitnow) pro mesmo formato\n//   2) juntamos tudo e removemos duplicadas (dentro da execução e contra o que já está no Notion)\n//\n// Pra adicionar uma nova fonte \"bruta\" no futuro: copie um dos blocos abaixo (RemoteOK,\n// Remotive ou Arbeitnow) e ajuste o `if` de detecção do formato de resposta da API nova.\n\nconst rawItems = $input.all();\n\n// --- IDs e URLs já salvos no Notion (evita duplicar entre execuções) ---\nlet idsExistentes = new Set();\nlet urlsExistentes = new Set();\ntry {\n  const notionResp = $('Buscar Vagas já salvas no Notion').first().json;\n  for (const page of (notionResp.results || [])) {\n    const idProp = page.properties && page.properties['ID Externo'];\n    const idVal = (idProp && idProp.rich_text && idProp.rich_text[0] && idProp.rich_text[0].plain_text) || '';\n    if (idVal) idsExistentes.add(idVal);\n\n    const urlProp = page.properties && page.properties['Link da vaga'];\n    const urlVal = (urlProp && urlProp.url) || '';\n    if (urlVal) urlsExistentes.add(urlVal);\n  }\n} catch (e) {\n  console.log('[Normalização] Não foi possível ler vagas existentes do Notion:', e.message);\n}\n\nfunction limparHtml(txt) {\n  return String(txt || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 4000);\n}\n\n// Hash simples (não-criptográfico), só pra achar descrições muito parecidas\nfunction hashTexto(txt) {\n  const s = String(txt || '').toLowerCase().replace(/\\s+/g, '').slice(0, 500);\n  let hash = 0;\n  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;\n  return hash.toString(36);\n}\n\nconst vagas = [];\nconst contagemPorFonte = {};\nfunction registrar(fonte) { contagemPorFonte[fonte] = (contagemPorFonte[fonte] || 0) + 1; }\n\nfor (const item of rawItems) {\n  const body = item.json;\n  if (!body) continue;\n\n  // Item de erro (um node upstream falhou com \"continue on fail\")\n  if (body.error) {\n    console.log('[Normalização] Fonte com erro, item ignorado:', body.error);\n    continue;\n  }\n\n  // Já normalizado (Indeed/Linkedin) - reconhecível por já ter id_externo + fonte\n  if (body.id_externo && body.fonte) {\n    vagas.push(body);\n    registrar(body.fonte);\n    continue;\n  }\n\n  // RemoteOK: array direto de vagas\n  if (Array.isArray(body)) {\n    for (const job of body) {\n      if (!job.id || !job.position) continue;\n      vagas.push({\n        id_externo: 'remoteok_' + job.id,\n        titulo: job.position,\n        empresa: job.company || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: true,\n        link: job.url || ('https://remoteok.com/remote-jobs/' + job.id),\n        descricao: limparHtml(job.description),\n        tags: job.tags || [],\n        fonte: 'RemoteOK'\n      });\n      registrar('RemoteOK');\n    }\n    continue;\n  }\n\n  // Remotive: { jobs: [...] }\n  if (Array.isArray(body.jobs)) {\n    for (const job of body.jobs) {\n      vagas.push({\n        id_externo: 'remotive_' + job.id,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.candidate_required_location || 'Remoto',\n        remoto: true,\n        link: job.url,\n        descricao: limparHtml(job.description),\n        tags: job.tags || [],\n        fonte: 'Remotive'\n      });\n      registrar('Remotive');\n    }\n    continue;\n  }\n\n  // Arbeitnow: { data: [...] }\n  if (Array.isArray(body.data)) {\n    for (const job of body.data) {\n      vagas.push({\n        id_externo: 'arbeitnow_' + job.slug,\n        titulo: job.title,\n        empresa: job.company_name || 'Não informado',\n        local: job.location || 'Remoto',\n        remoto: !!job.remote,\n        link: job.url,\n        descricao: limparHtml(job.description),\n        tags: job.tags || [],\n        fonte: 'Arbeitnow'\n      });\n      registrar('Arbeitnow');\n    }\n    continue;\n  }\n}\n\nconsole.log('[Normalização] Vagas brutas por fonte:', JSON.stringify(contagemPorFonte), '| total normalizado:', vagas.length);\n\n// --- Deduplicação (nesta ordem): id_externo -> url -> empresa+cargo -> hash da descrição ---\nconst vistoId = new Set();\nconst vistoUrl = new Set();\nconst vistoEmpresaCargo = new Set();\nconst vistoHashDescricao = new Set();\n\nconst novas = vagas.filter(v => {\n  if (idsExistentes.has(v.id_externo)) return false;\n  if (v.link && urlsExistentes.has(v.link)) return false;\n\n  if (vistoId.has(v.id_externo)) return false;\n  if (v.link && vistoUrl.has(v.link)) return false;\n\n  const chaveEmpresaCargo = (v.empresa + '|' + v.titulo).toLowerCase().replace(/\\s+/g, ' ').trim();\n  if (vistoEmpresaCargo.has(chaveEmpresaCargo)) return false;\n\n  const hashDesc = hashTexto(v.descricao);\n  if (hashDesc && vistoHashDescricao.has(hashDesc)) return false;\n\n  vistoId.add(v.id_externo);\n  if (v.link) vistoUrl.add(v.link);\n  vistoEmpresaCargo.add(chaveEmpresaCargo);\n  if (hashDesc) vistoHashDescricao.add(hashDesc);\n  return true;\n});\n\nconsole.log(`[Normalização] Após deduplicação: ${novas.length} vagas novas (${vagas.length - novas.length} duplicadas removidas).`);\n\nreturn novas.map(v => ({ json: v }));"
+      },
+      "id": "e869e1e3-8368-4333-9dc6-0809d8d7cf25",
+      "name": "Normalizar + Deduplicar (Agente 2)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ /junior|júnior|jr\\.|estagio|estágio|trainee|entry.level|intern|graduate|assistant/i.test($json.titulo + ' ' + $json.descricao) && !/senior|sr\\.|staff|principal|lead|specialist|manager|architect/i.test($json.titulo) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "98684a5e-bda4-44df-84b5-ba2e82571a71"
+            },
+            {
+              "id": "1d62205b-48bc-4567-9ca3-75340528240f",
+              "leftValue": "={{ $json.remoto === true || /brasil|brazil|porto alegre|\\bpoa\\b/i.test($json.local) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "efd1e159-07c6-49a8-8b61-48ff9741210e",
+      "name": "Pré-Filtro (Júnior/Estágio + Local)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9e2f9aec-b07d-4e09-a896-5c7308e80cd0",
+      "name": "Processar Uma Vaga por Vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1744,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  max_tokens: 1000,\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: \"Você avalia compatibilidade entre um perfil profissional e uma vaga de emprego, para uma candidata em início de carreira (estudante de Ciência da Computação, buscando estágio ou vaga júnior). Responda SOMENTE com um JSON válido (sem markdown, sem texto fora do JSON), com os campos: compatibilidade (numero 0-100), pontos_fortes (array de strings curtas), gaps (array de strings curtas), vale_a_pena (boolean), resumo_empresa (string, 1-2 frases), senioridade_da_vaga (uma de: Estagio, Junior, Pleno, Senior, Nao especificado), tecnologias_encontradas (array com as tecnologias do perfil que aparecem na vaga), stack_ausente (array de tecnologias pedidas na vaga que NAO aparecem no perfil), localizacao_avaliada (string curta, ex: 'Remoto sem restricao', 'Presencial Porto Alegre', 'Fora do alcance'), idioma_requerido (string curta, ex: 'Portugues', 'Ingles avancado', 'Nao especificado'), exige_experiencia_previa (boolean), justificativa_nota (string curta, 1 frase explicando a nota de compatibilidade), area_vaga (uma de: Dev, Dados, Suporte).\"\n    },\n    {\n      role: \"user\",\n      content: \"PERFIL PROFISSIONAL:\\n\" + JSON.stringify($('Perfil Profissional (Agente 1)').first().json) + \"\\n\\nSCORE HEURISTICO (triagem automatica): \" + $json.score_heuristico + \"\\n\\nVAGA:\\nTitulo: \" + $json.titulo + \"\\nEmpresa: \" + $json.empresa + \"\\nLocal: \" + $json.local + \"\\nDescricao: \" + $json.descricao\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "134efc7d-205f-4b51-a3ff-76994a4de910",
+      "name": "GPT - Avaliar Compatibilidade (Agente 3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1968,
+        48
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai o JSON retornado pela OpenAI (vem dentro de choices[0].message.content)\nconst resp = $input.first().json;\nlet texto = '';\ntry {\n  texto = resp.choices[0].message.content;\n} catch (e) {\n  texto = '{}';\n}\n\ntexto = texto.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet avaliacao;\ntry {\n  avaliacao = JSON.parse(texto);\n} catch (e) {\n  avaliacao = {};\n}\n\n// Defaults garantem que a página no Notion nunca quebra por campo faltando\nconst avaliacaoCompleta = {\n  compatibilidade: 0,\n  pontos_fortes: [],\n  gaps: ['Erro ao interpretar resposta da IA'],\n  vale_a_pena: false,\n  resumo_empresa: '',\n  senioridade_da_vaga: 'Nao especificado',\n  tecnologias_encontradas: [],\n  stack_ausente: [],\n  localizacao_avaliada: '',\n  idioma_requerido: '',\n  exige_experiencia_previa: null,\n  justificativa_nota: '',\n  area_vaga: 'Dev',\n  ...avaliacao\n};\n\nconst vaga = $('Processar Uma Vaga por Vez').item.json;\n\nconsole.log(`[IA] \"${vaga.titulo}\" (${vaga.empresa}) | score heurístico=${vaga.score_heuristico} | compatibilidade IA=${avaliacaoCompleta.compatibilidade}`);\n\nreturn [{\n  json: {\n    ...vaga,\n    ...avaliacaoCompleta\n  }\n}];"
+      },
+      "id": "34a2bc15-bccd-4473-a7cc-714fad4cfb0c",
+      "name": "Parse Resposta IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  parent: { database_id: \"COLOQUE_SEU_DATABASE_ID_AQUI\" },\n  properties: {\n    \"Vaga\": { title: [{ text: { content: $json.titulo } }] },\n    \"Empresa\": { rich_text: [{ text: { content: $json.empresa } }] },\n    \"Link da vaga\": { url: $json.link },\n    \"Fonte\": { select: { name: $json.fonte } },\n    \"ID Externo\": { rich_text: [{ text: { content: $json.id_externo } }] },\n    \"Local\": { rich_text: [{ text: { content: $json.local } }] },\n    \"Remoto\": { checkbox: $json.remoto },\n    \"Senioridade\": { select: { name: $json.senioridade_da_vaga || 'Nao especificado' } },\n    \"Compatibilidade\": { number: $json.compatibilidade },\n    \"Tecnologias encontradas\": { multi_select: (($json.tecnologias_encontradas)||[]).map(t => ({ name: t })) },\n    \"Pontos fortes\": { rich_text: [{ text: { content: (($json.pontos_fortes)||[]).join('; ').slice(0,1900) } }] },\n    \"Gaps\": { rich_text: [{ text: { content: (($json.gaps)||[]).join('; ').slice(0,1900) } }] },\n    \"Resumo empresa\": { rich_text: [{ text: { content: ($json.resumo_empresa || '').slice(0,1900) } }] },\n    \"Data encontrada\": { date: { start: $now.toISODate() } },\n    \"Status\": { select: { name: 'Novo' } },\n    \"Área\": { select: { name: $json.area_vaga || 'Dev' } }\n  }\n}) }}",
+        "options": {}
+      },
+      "id": "c94deefd-f472-4634-a196-ba375665d131",
+      "name": "Criar Página no Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        112
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "a25149af-6cdd-4c14-a1de-7f5c3800a199",
+      "name": "Descartar (abaixo do score)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.compatibilidade }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "id": "d777fa42-6d76-462c-91f3-3af46457c838"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4b0969ca-9b85-44e6-a8ab-2fcbcc92c73e",
+      "name": "Compatibilidade >= 50?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2416,
+        48
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Agendamento (8h todo dia)": {
+      "main": [
+        [
+          {
+            "node": "Perfil Profissional (Agente 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perfil Profissional (Agente 1)": {
+      "main": [
+        [
+          {
+            "node": "Config - Termos de Busca",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Vagas já salvas no Notion": {
+      "main": [
+        [
+          {
+            "node": "RemoteOK - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Arbeitnow - Buscar Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Indeed Scraper - Busca Vagas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Linkedin Scraper - Busca Vagas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotive - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Arbeitnow - Buscar Vagas": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indeed Scraper - Busca Vagas": {
+      "main": [
+        [
+          {
+            "node": "Normalizar - Indeed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Linkedin Scraper - Busca Vagas": {
+      "main": [
+        [
+          {
+            "node": "Normalizar - Linkedin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar - Indeed": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar - Linkedin": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 4",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 4": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 1": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 3": {
+      "main": [
+        [
+          {
+            "node": "Juntar Fontes 2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Fontes 2": {
+      "main": [
+        [
+          {
+            "node": "Normalizar + Deduplicar (Agente 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar + Deduplicar (Agente 2)": {
+      "main": [
+        [
+          {
+            "node": "Pré-Filtro (Júnior/Estágio + Local)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pré-Filtro (Júnior/Estágio + Local)": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Uma Vaga por Vez": {
+      "main": [
+        [],
+        [
+          {
+            "node": "GPT - Avaliar Compatibilidade (Agente 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT - Avaliar Compatibilidade (Agente 3)": {
+      "main": [
+        [
+          {
+            "node": "Parse Resposta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Resposta IA": {
+      "main": [
+        [
+          {
+            "node": "Compatibilidade >= 50?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Página no Notion": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descartar (abaixo do score)": {
+      "main": [
+        [
+          {
+            "node": "Processar Uma Vaga por Vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config - Termos de Busca": {
+      "main": [
+        [
+          {
+            "node": "Buscar Vagas já salvas no Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compatibilidade >= 50?": {
+      "main": [
+        [
+          {
+            "node": "Criar Página no Notion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Descartar (abaixo do score)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2f51f2bd-46f2-4fdd-92b3-24947a01dbc0",
+  "meta": {
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "id": "f66e350d-a644-42b7-a535-ed38846712fb",
+  "tags": []
+}
